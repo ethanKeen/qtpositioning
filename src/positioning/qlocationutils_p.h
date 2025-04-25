@@ -61,7 +61,8 @@ public:
         NmeaSentenceRMC, // Recommended minimum data for gps
         NmeaSentenceVTG, // Vector track an Speed over the Ground
         NmeaSentenceZDA, // Date and Time
-        NmeaSentenceGSV  // Per-Satellite Info
+        NmeaSentenceGSV,  // Per-Satellite Info
+        NmeaSentenceHDT //added heading info
     };
 
     inline static bool isValidLat(double lat) {
