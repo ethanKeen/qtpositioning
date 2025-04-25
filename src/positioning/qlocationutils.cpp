@@ -236,6 +236,22 @@ static void qlocationutils_readZda(QByteArrayView bv, QGeoPositionInfo *info, bo
     info->setTimestamp(QDateTime(date, time, QTimeZone::UTC));
 }
 
+static void qlocationutils_readHdt(QByteArrayView bv, QGeoPositionInfo *info) //added read heading
+{
+    // Split on commas: [ "GPHDT", "123.456", "T" ]
+    const auto parts = QByteArray::fromRawData(bv.data(), bv.size()).split(',');
+    if (parts.size() < 2)
+        return;
+    bool ok = false;
+    double hd = parts.at(1).toDouble(&ok);
+    if (ok) {
+        // stamp it into the Direction attribute
+        info->setAttribute(QGeoPositionInfo::Direction, qreal(hd));
+        // force it through even if no accuracy was provided
+        info->setAttribute(QGeoPositionInfo::DirectionAccuracy, 0.0);
+    }
+}
+
 QLocationUtils::NmeaSentence QLocationUtils::getNmeaSentenceType(QByteArrayView bv)
 {
     if (bv.size() < 6 || bv[0] != '$' || !hasValidNmeaChecksum(bv))
@@ -263,6 +279,9 @@ QLocationUtils::NmeaSentence QLocationUtils::getNmeaSentenceType(QByteArrayView 
 
     if (key.startsWith("ZDA"))
         return NmeaSentenceZDA;
+    
+    if (key.startsWith("HDT"))
+        return NmeaSentenceHDT;
 
     return NmeaSentenceInvalid;
 }
@@ -356,6 +375,9 @@ bool QLocationUtils::getPosInfoFromNmea(QByteArrayView bv, QGeoPositionInfo *inf
         return true;
     case NmeaSentenceZDA:
         qlocationutils_readZda(key, info, hasFix);
+        return true;
+    case NmeaSentenceHDT:
+        qlocationutils_readHdt(key, info);
         return true;
     default:
         return false;
