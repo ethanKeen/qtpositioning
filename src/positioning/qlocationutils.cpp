@@ -348,6 +348,7 @@ QGeoSatelliteInfo::SatelliteSystem QLocationUtils::getSatelliteSystemBySatellite
 bool QLocationUtils::getPosInfoFromNmea(QByteArrayView bv, QGeoPositionInfo *info,
                                         double uere, bool *hasFix)
 {
+    haveAbsoluteHeading = false;
     if (!info)
         return false;
 
