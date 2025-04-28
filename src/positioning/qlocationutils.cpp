@@ -17,6 +17,7 @@
 #include <math.h>
 
 QT_BEGIN_NAMESPACE
+static bool haveAbsoluteHeading = false;
 
 // converts e.g. 15306.0235 from NMEA sentence to 153.100392
 static double qlocationutils_nmeaDegreesToDecimal(double nmeaDegrees)
@@ -173,7 +174,8 @@ static void qlocationutils_readRmc(QByteArrayView bv, QGeoPositionInfo *info, bo
     if (parts.size() > 8 && !parts[8].isEmpty()) {
         value = parts[8].toDouble(&parsed);
         if (parsed)
-            info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
+           if (!haveAbsoluteHeading)
+                info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
     }
     if (parts.size() > 11 && parts[11].size() == 1
             && (parts[11][0] == 'E' || parts[11][0] == 'W')) {
@@ -203,7 +205,8 @@ static void qlocationutils_readVtg(QByteArrayView bv, QGeoPositionInfo *info, bo
     if (parts.size() > 1 && !parts[1].isEmpty()) {
         value = parts[1].toDouble(&parsed);
         if (parsed)
-            info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
+             if (!haveAbsoluteHeading)
+                info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
     }
     if (parts.size() > 7 && !parts[7].isEmpty()) {
         value = parts[7].toDouble(&parsed);
@@ -236,21 +239,23 @@ static void qlocationutils_readZda(QByteArrayView bv, QGeoPositionInfo *info, bo
     info->setTimestamp(QDateTime(date, time, QTimeZone::UTC));
 }
 
-static void qlocationutils_readHdt(QByteArrayView bv, QGeoPositionInfo *info) //added read heading
-{
-    // Split on commas: [ "GPHDT", "123.456", "T" ]
-    const auto parts = QByteArray::fromRawData(bv.data(), bv.size()).split(',');
-    if (parts.size() < 2)
-        return;
-    bool ok = false;
-    double hd = parts.at(1).toDouble(&ok);
-    if (ok) {
-        // stamp it into the Direction attribute
-        info->setAttribute(QGeoPositionInfo::Direction, qreal(hd));
-        // force it through even if no accuracy was provided
-        info->setAttribute(QGeoPositionInfo::DirectionAccuracy, 0.0);
-    }
-}
+ static void qlocationutils_readHdt(QByteArrayView bv, QGeoPositionInfo *info) // added read absolute heading
+ {
+     // Split on commas: [ "GPHDT", "123.456", "T" ]
+     const auto parts = QByteArray::fromRawData(bv.data(), bv.size()).split(',');
+     if (parts.size() < 2)
+         return;
+     bool ok = false;
+     double hd = parts.at(1).toDouble(&ok);
+     if (ok) {
+         // mark that we have an absolute heading
+         haveAbsoluteHeading = true;
+         // stamp it into the Direction attribute
+         info->setAttribute(QGeoPositionInfo::Direction, qreal(hd));
+         // force it through even if no accuracy was provided
+         info->setAttribute(QGeoPositionInfo::DirectionAccuracy, 0.0);
+     }
+ }
 
 QLocationUtils::NmeaSentence QLocationUtils::getNmeaSentenceType(QByteArrayView bv)
 {
